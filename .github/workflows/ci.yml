@@ -83,7 +83,7 @@ jobs:
       - run: npm ci
       - run: npm run build:contracts
       - name: Restore Build Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: .cache
           key: ${{ runner.os }}-build-cache
@@ -96,14 +96,16 @@ jobs:
         with:
           name: dist
           path: dist/
+      - name: "Az CLI login"
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.PREVIEW_SUBSCRIPTION_ID }}
       - name: Upload build to preview blob storage
-        run: az storage blob upload-batch -d '$web' -s 'dist' --account-name cosmosexplorerpreview --destination-path "${{github.event.pull_request.head.sha || github.sha}}" --account-key="${PREVIEW_STORAGE_KEY}" --overwrite true
-        env:
-          PREVIEW_STORAGE_KEY: ${{ secrets.PREVIEW_STORAGE_KEY }}
+        run: az storage blob upload-batch -d '$web' -s 'dist' --account-name ${{ secrets.PREVIEW_STORAGE_ACCOUNT_NAME }} --destination-path "${{github.event.pull_request.head.sha || github.sha}}" --auth-mode login --overwrite true
       - name: Upload preview config to blob storage
-        run: az storage blob upload -c '$web' -f ./preview/config.json --account-name cosmosexplorerpreview --name "${{github.event.pull_request.head.sha || github.sha}}/config.json" --account-key="${PREVIEW_STORAGE_KEY}" --overwrite true
-        env:
-          PREVIEW_STORAGE_KEY: ${{ secrets.PREVIEW_STORAGE_KEY }}
+        run: az storage blob upload -c '$web' -f ./preview/config.json --account-name ${{ secrets.PREVIEW_STORAGE_ACCOUNT_NAME }} --name "${{github.event.pull_request.head.sha || github.sha}}/config.json" --auth-mode login --overwrite true
   nuget:
     name: Publish Nuget
     if: github.ref == 'refs/heads/master' || contains(github.ref, 'hotfix/') || contains(github.ref, 'release/')
@@ -162,24 +164,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6, 7, 8]
-        shardTotal: [8]
+        shardIndex: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        shardTotal: [16]
     steps:
       - uses: actions/checkout@v4
-      - name: "Az CLI login"
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Use Node.js 18.x
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
       - run: npm ci
       - run: npx playwright install --with-deps
+      - name: "Az CLI login"
+        uses: Azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Run test shard ${{ matrix['shardIndex'] }} of ${{ matrix['shardTotal']}}
-        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --workers=3
       - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

@@ -93,7 +93,7 @@ exports[`AddCollectionPanel should render Default properly 1`] = `
           id="newDatabaseId"
           name="newDatabaseId"
           onChange={[Function]}
-          pattern="[^/?#\\\\]*[^/?# \\\\]"
+          pattern="[^\\/?#\\\\]*[^\\/?# \\\\]"
           placeholder="Type a new database id"
           required={true}
           size={40}
@@ -178,7 +178,7 @@ exports[`AddCollectionPanel should render Default properly 1`] = `
         id="collectionId"
         name="collectionId"
         onChange={[Function]}
-        pattern="[^/?#\\\\]*[^/?# \\\\]"
+        pattern="[^\\/?#\\\\]*[^\\/?# \\\\]"
         placeholder="e.g., Container1"
         required={true}
         size={40}
@@ -319,6 +319,7 @@ exports[`AddCollectionPanel should render Default properly 1`] = `
           Enable analytical store capability to perform near real-time analytics on your operational data, without impacting the performance of transactional workloads.
            
           <StyledLinkBase
+            aria-label="Learn more about analytical store."
             href="https://aka.ms/analytical-store-overview"
             target="_blank"
           >
@@ -383,6 +384,7 @@ exports[`AddCollectionPanel should render Default properly 1`] = `
           . Enable Synapse Link for this Cosmos DB account.
            
           <StyledLinkBase
+            aria-label="Learn more about Azure Synapse Link."
             className="capacitycalculator-link"
             href="https://aka.ms/cosmosdb-synapselink"
             target="_blank"

@@ -1,4 +1,5 @@
 import { Checkbox, DirectionalHint, Link, Stack, Text, TextField, TooltipHost } from "@fluentui/react";
+import { getWorkloadType } from "Common/DatabaseAccountUtility";
 import { useDatabases } from "Explorer/useDatabases";
 import React, { FunctionComponent, useEffect, useState } from "react";
 import * as Constants from "../../../Common/Constants";
@@ -17,6 +18,7 @@ export interface ThroughputInputProps {
   isFreeTier: boolean;
   showFreeTierExceedThroughputTooltip: boolean;
   isQuickstart?: boolean;
+  isGlobalSecondaryIndex?: boolean;
   setThroughputValue: (throughput: number) => void;
   setIsAutoscale: (isAutoscale: boolean) => void;
   setIsThroughputCapExceeded: (isThroughputCapExceeded: boolean) => void;
@@ -29,15 +31,29 @@ export const ThroughputInput: FunctionComponent<ThroughputInputProps> = ({
   isFreeTier,
   showFreeTierExceedThroughputTooltip,
   isQuickstart,
+  isGlobalSecondaryIndex,
   setThroughputValue,
   setIsAutoscale,
   setIsThroughputCapExceeded,
   onCostAcknowledgeChange,
 }: ThroughputInputProps) => {
+  let defaultThroughput: number;
+  const workloadType: Constants.WorkloadType = getWorkloadType();
+
+  if (
+    isFreeTier ||
+    isQuickstart ||
+    [Constants.WorkloadType.Learning, Constants.WorkloadType.DevelopmentTesting].includes(workloadType)
+  ) {
+    defaultThroughput = AutoPilotUtils.autoPilotThroughput1K;
+  } else if (workloadType === Constants.WorkloadType.Production) {
+    defaultThroughput = AutoPilotUtils.autoPilotThroughput10K;
+  } else {
+    defaultThroughput = AutoPilotUtils.autoPilotThroughput4K;
+  }
+
   const [isAutoscaleSelected, setIsAutoScaleSelected] = useState<boolean>(true);
-  const [throughput, setThroughput] = useState<number>(
-    isFreeTier || isQuickstart ? AutoPilotUtils.autoPilotThroughput1K : AutoPilotUtils.autoPilotThroughput4K,
-  );
+  const [throughput, setThroughput] = useState<number>(defaultThroughput);
   const [isCostAcknowledged, setIsCostAcknowledged] = useState<boolean>(false);
   const [throughputError, setThroughputError] = useState<string>("");
   const [totalThroughputUsed, setTotalThroughputUsed] = useState<number>(0);
@@ -47,7 +63,6 @@ export const ThroughputInput: FunctionComponent<ThroughputInputProps> = ({
 
   const throughputCap = userContext.databaseAccount?.properties.capacity?.totalThroughputLimit;
   const numberOfRegions = userContext.databaseAccount?.properties.locations?.length || 1;
-
   useEffect(() => {
     // throughput cap check for the initial state
     let totalThroughput = 0;
@@ -157,9 +172,6 @@ export const ThroughputInput: FunctionComponent<ThroughputInputProps> = ({
 
   const handleOnChangeMode = (event: React.ChangeEvent<HTMLInputElement>, mode: string): void => {
     if (mode === "Autoscale") {
-      const defaultThroughput = isFreeTier
-        ? AutoPilotUtils.autoPilotThroughput1K
-        : AutoPilotUtils.autoPilotThroughput4K;
       setThroughput(defaultThroughput);
       setIsAutoScaleSelected(true);
       setThroughputValue(defaultThroughput);
@@ -183,41 +195,41 @@ export const ThroughputInput: FunctionComponent<ThroughputInputProps> = ({
         </Text>
         <InfoTooltip>{PricingUtils.getRuToolTipText()}</InfoTooltip>
       </Stack>
+      {!isGlobalSecondaryIndex && (
+        <Stack horizontal verticalAlign="center">
+          <div role="radiogroup">
+            <input
+              id="Autoscale-input"
+              className="throughputInputRadioBtn"
+              aria-label={`${getThroughputLabelText()} Autoscale`}
+              aria-required={true}
+              checked={isAutoscaleSelected}
+              type="radio"
+              role="radio"
+              tabIndex={0}
+              onChange={(e) => handleOnChangeMode(e, "Autoscale")}
+            />
+            <label htmlFor="Autoscale-input" className="throughputInputRadioBtnLabel">
+              Autoscale
+            </label>
 
-      <Stack horizontal verticalAlign="center">
-        <div role="radiogroup">
-          <input
-            id="Autoscale-input"
-            className="throughputInputRadioBtn"
-            aria-label={`${getThroughputLabelText()} Autoscale`}
-            aria-required={true}
-            checked={isAutoscaleSelected}
-            type="radio"
-            role="radio"
-            tabIndex={0}
-            onChange={(e) => handleOnChangeMode(e, "Autoscale")}
-          />
-          <label htmlFor="Autoscale-input" className="throughputInputRadioBtnLabel">
-            Autoscale
-          </label>
-
-          <input
-            id="Manual-input"
-            className="throughputInputRadioBtn"
-            aria-label={`${getThroughputLabelText()} Manual`}
-            checked={!isAutoscaleSelected}
-            type="radio"
-            aria-required={true}
-            role="radio"
-            tabIndex={0}
-            onChange={(e) => handleOnChangeMode(e, "Manual")}
-          />
-          <label className="throughputInputRadioBtnLabel" htmlFor="Manual-input">
-            Manual
-          </label>
-        </div>
-      </Stack>
-
+            <input
+              id="Manual-input"
+              className="throughputInputRadioBtn"
+              aria-label={`${getThroughputLabelText()} Manual`}
+              checked={!isAutoscaleSelected}
+              type="radio"
+              aria-required={true}
+              role="radio"
+              tabIndex={0}
+              onChange={(e) => handleOnChangeMode(e, "Manual")}
+            />
+            <label className="throughputInputRadioBtnLabel" htmlFor="Manual-input">
+              Manual
+            </label>
+          </div>
+        </Stack>
+      )}
       {isAutoscaleSelected && (
         <Stack className="throughputInputSpacing">
           <Text variant="small" aria-label="capacity calculator of azure cosmos db">
