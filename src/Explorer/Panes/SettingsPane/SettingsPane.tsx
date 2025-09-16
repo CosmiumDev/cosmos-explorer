@@ -180,6 +180,11 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
       ? LocalStorageUtility.getEntryNumber(StorageKey.MaxWaitTimeInSeconds)
       : Constants.Queries.DefaultMaxWaitTimeInSeconds,
   );
+  const [queryControlEnabled, setQueryControlEnabled] = useState<boolean>(
+    LocalStorageUtility.hasItem(StorageKey.QueryControlEnabled)
+      ? LocalStorageUtility.getEntryString(StorageKey.QueryControlEnabled) === "true"
+      : false,
+  );
   const [maxDegreeOfParallelism, setMaxDegreeOfParallelism] = useState<number>(
     LocalStorageUtility.hasItem(StorageKey.MaxDegreeOfParellism)
       ? LocalStorageUtility.getEntryNumber(StorageKey.MaxDegreeOfParellism)
@@ -194,6 +199,12 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
     LocalStorageUtility.getEntryString(StorageKey.CopilotSampleDBEnabled) === "true",
   );
 
+  const [mongoGuidRepresentation, setMongoGuidRepresentation] = useState<Constants.MongoGuidRepresentation>(
+    LocalStorageUtility.hasItem(StorageKey.MongoGuidRepresentation)
+      ? (LocalStorageUtility.getEntryString(StorageKey.MongoGuidRepresentation) as Constants.MongoGuidRepresentation)
+      : Constants.MongoGuidRepresentation.CSharpLegacy,
+  );
+
   const styles = useStyles();
 
   const explorerVersion = configContext.gitSha;
@@ -204,6 +215,7 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
     !isEmulator;
   const shouldShowGraphAutoVizOption = userContext.apiType === "Gremlin" && !isEmulator;
   const shouldShowCrossPartitionOption = userContext.apiType !== "Gremlin" && !isEmulator;
+  const shouldShowEnhancedQueryControl = userContext.apiType === "SQL";
   const shouldShowParallelismOption = userContext.apiType !== "Gremlin" && !isEmulator;
   const showEnableEntraIdRbac =
     isDataplaneRbacSupported(userContext.apiType) &&
@@ -254,6 +266,8 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
     useQueryCopilot.getState().copilotEnabled &&
     useDatabases.getState().sampleDataResourceTokenCollection &&
     !isEmulator;
+
+  const shouldShowMongoGuidRepresentationOption = userContext.apiType === "Mongo";
 
   const handlerOnSubmit = async () => {
     setIsExecuting(true);
@@ -381,6 +395,7 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
     LocalStorageUtility.setEntryNumber(StorageKey.MaxWaitTimeInSeconds, MaxWaitTimeInSeconds);
     LocalStorageUtility.setEntryString(StorageKey.ContainerPaginationEnabled, containerPaginationEnabled.toString());
     LocalStorageUtility.setEntryString(StorageKey.IsCrossPartitionQueryEnabled, crossPartitionQueryEnabled.toString());
+    LocalStorageUtility.setEntryString(StorageKey.QueryControlEnabled, queryControlEnabled.toString());
     LocalStorageUtility.setEntryNumber(StorageKey.MaxDegreeOfParellism, maxDegreeOfParallelism);
     LocalStorageUtility.setEntryString(StorageKey.PriorityLevel, priorityLevel.toString());
     LocalStorageUtility.setEntryString(StorageKey.CopilotSampleDBEnabled, copilotSampleDBEnabled.toString());
@@ -405,11 +420,16 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
       );
     }
 
+    if (shouldShowMongoGuidRepresentationOption) {
+      LocalStorageUtility.setEntryString(StorageKey.MongoGuidRepresentation, mongoGuidRepresentation);
+    }
+
     setIsExecuting(false);
     logConsoleInfo(
       `Updated items per page setting to ${LocalStorageUtility.getEntryNumber(StorageKey.ActualItemPerPage)}`,
     );
     logConsoleInfo(`${crossPartitionQueryEnabled ? "Enabled" : "Disabled"} cross-partition query feed option`);
+    logConsoleInfo(`${queryControlEnabled ? "Enabled" : "Disabled"} query control option`);
     logConsoleInfo(
       `Updated the max degree of parallelism query feed option to ${LocalStorageUtility.getEntryNumber(
         StorageKey.MaxDegreeOfParellism,
@@ -425,9 +445,14 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
       );
     }
 
-    logConsoleInfo(
-      `Updated query setting to ${LocalStorageUtility.getEntryString(StorageKey.SetPartitionKeyUndefined)}`,
-    );
+    if (shouldShowMongoGuidRepresentationOption) {
+      logConsoleInfo(
+        `Updated Mongo Guid Representation to ${LocalStorageUtility.getEntryString(
+          StorageKey.MongoGuidRepresentation,
+        )}`,
+      );
+    }
+
     refreshExplorer && (await explorer.refreshExplorer());
     closeSidePanel();
   };
@@ -470,6 +495,13 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
   const defaultQueryResultsViewOptionList: IChoiceGroupOption[] = [
     { key: SplitterDirection.Vertical, text: "Vertical" },
     { key: SplitterDirection.Horizontal, text: "Horizontal" },
+  ];
+
+  const mongoGuidRepresentationDropdownOptions: IDropdownOption[] = [
+    { key: Constants.MongoGuidRepresentation.CSharpLegacy, text: Constants.MongoGuidRepresentation.CSharpLegacy },
+    { key: Constants.MongoGuidRepresentation.JavaLegacy, text: Constants.MongoGuidRepresentation.JavaLegacy },
+    { key: Constants.MongoGuidRepresentation.PythonLegacy, text: Constants.MongoGuidRepresentation.PythonLegacy },
+    { key: Constants.MongoGuidRepresentation.Standard, text: Constants.MongoGuidRepresentation.Standard },
   ];
 
   const handleOnPriorityLevelOptionChange = (
@@ -552,6 +584,13 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
     setCopilotSampleDBEnabled(checked);
     useQueryCopilot.getState().setCopilotSampleDBEnabled(checked);
     setRefreshExplorer(false);
+  };
+
+  const handleOnMongoGuidRepresentationOptionChange = (
+    ev: React.FormEvent<HTMLInputElement>,
+    option: IDropdownOption,
+  ): void => {
+    setMongoGuidRepresentation(option.key as Constants.MongoGuidRepresentation);
   };
 
   const choiceButtonStyles = {
@@ -760,7 +799,6 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
                     )}
                   </AccordionPanel>
                 </AccordionItem>
-
                 <AccordionItem value="5">
                   <AccordionHeader>
                     <div className={styles.header}>RU Limit</div>
@@ -943,6 +981,38 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
                 </AccordionPanel>
               </AccordionItem>
             )}
+            {shouldShowEnhancedQueryControl && (
+              <AccordionItem value="10">
+                <AccordionHeader>
+                  <div className={styles.header}>Enhanced query control</div>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <div className={styles.settingsSectionContainer}>
+                    <div className={styles.settingsSectionDescription}>
+                      Query up to the max degree of parallelism.
+                      <a
+                        href="https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/performance-tips-query-sdk?tabs=v3&pivots=programming-language-nodejs#enhanced-query-control"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {" "}
+                        Learn more{" "}
+                      </a>
+                    </div>
+                    <Checkbox
+                      styles={{
+                        label: { padding: 0 },
+                      }}
+                      className="padding"
+                      ariaLabel="EnableQueryControl"
+                      checked={queryControlEnabled}
+                      onChange={() => setQueryControlEnabled(!queryControlEnabled)}
+                      label="Enable query control"
+                    />
+                  </div>
+                </AccordionPanel>
+              </AccordionItem>
+            )}
             {shouldShowParallelismOption && (
               <AccordionItem value="10">
                 <AccordionHeader>
@@ -1029,18 +1099,39 @@ export const SettingsPane: FunctionComponent<{ explorer: Explorer }> = ({
                   <div className={styles.settingsSectionContainer}>
                     <div className={styles.settingsSectionDescription}>
                       This is a sample database and collection with synthetic product data you can use to explore using
-                      NoSQL queries and Query Advisor. This will appear as another database in the Data Explorer UI, and
-                      is created by, and maintained by Microsoft at no cost to you.
+                      NoSQL queries. This will appear as another database in the Data Explorer UI, and is created by,
+                      and maintained by Microsoft at no cost to you.
                     </div>
                     <Checkbox
                       styles={{
                         label: { padding: 0 },
                       }}
                       className="padding"
-                      ariaLabel="Enable sample db for Query Advisor"
+                      ariaLabel="Enable sample db for query exploration"
                       checked={copilotSampleDBEnabled}
                       onChange={handleSampleDatabaseChange}
                       label="Enable sample database"
+                    />
+                  </div>
+                </AccordionPanel>
+              </AccordionItem>
+            )}
+            {shouldShowMongoGuidRepresentationOption && (
+              <AccordionItem value="14">
+                <AccordionHeader>
+                  <div className={styles.header}>Guid Representation</div>
+                </AccordionHeader>
+                <AccordionPanel>
+                  <div className={styles.settingsSectionContainer}>
+                    <div className={styles.settingsSectionDescription}>
+                      GuidRepresentation in MongoDB refers to how Globally Unique Identifiers (GUIDs) are serialized and
+                      deserialized when stored in BSON documents. This will apply to all document operations.
+                    </div>
+                    <Dropdown
+                      aria-labelledby="mongoGuidRepresentation"
+                      selectedKey={mongoGuidRepresentation}
+                      options={mongoGuidRepresentationDropdownOptions}
+                      onChange={handleOnMongoGuidRepresentationOptionChange}
                     />
                   </div>
                 </AccordionPanel>

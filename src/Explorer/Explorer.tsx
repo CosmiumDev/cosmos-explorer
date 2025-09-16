@@ -8,7 +8,12 @@ import { MessageTypes } from "Contracts/ExplorerContracts";
 import { useDataPlaneRbac } from "Explorer/Panes/SettingsPane/SettingsPane";
 import { getCopilotEnabled, isCopilotFeatureRegistered } from "Explorer/QueryCopilot/Shared/QueryCopilotClient";
 import { IGalleryItem } from "Juno/JunoClient";
-import { isFabricMirrored, isFabricMirroredKey, scheduleRefreshFabricToken } from "Platform/Fabric/FabricUtil";
+import {
+  isFabricMirrored,
+  isFabricMirroredKey,
+  isFabricNative,
+  scheduleRefreshFabricToken,
+} from "Platform/Fabric/FabricUtil";
 import { LocalStorageUtility, StorageKey } from "Shared/StorageUtility";
 import { acquireMsalTokenForAccount } from "Utils/AuthorizationUtils";
 import { allowedNotebookServerUrls, validateEndpoint } from "Utils/EndpointUtils";
@@ -31,6 +36,7 @@ import { readDatabases } from "../Common/dataAccess/readDatabases";
 import * as DataModels from "../Contracts/DataModels";
 import { ContainerConnectionInfo, IPhoenixServiceInfo, IProvisionData, IResponse } from "../Contracts/DataModels";
 import * as ViewModels from "../Contracts/ViewModels";
+import { UploadDetailsRecord } from "../Contracts/ViewModels";
 import { GitHubOAuthService } from "../GitHub/GitHubOAuthService";
 import { PhoenixClient } from "../Phoenix/PhoenixClient";
 import * as ExplorerSettings from "../Shared/ExplorerSettings";
@@ -283,45 +289,40 @@ export default class Explorer {
     }
   }
 
-  public openInVsCode(): void {
-    TelemetryProcessor.traceStart(Action.OpenVSCode);
-    this.openVsCodeButtonClick();
+  /**
+   * Generates a VS Code DocumentDB connection URL using the current user's MongoDB connection parameters.
+   * Double-encodes the updated connection string for safe usage in VS Code URLs.
+   *
+   * The DocumentDB VS Code extension requires double encoding for connection strings.
+   * See: https://microsoft.github.io/vscode-documentdb/manual/how-to-construct-url.html#double-encoding
+   *
+   * @returns {string} The encoded VS Code DocumentDB connection URL.
+   */
+  private getDocumentDbUrl() {
+    const { adminLogin: adminLoginuserName = "", connectionString = "" } = userContext.vcoreMongoConnectionParams;
+    const updatedConnectionString = connectionString.replace(/<(user|username)>:<password>/i, adminLoginuserName);
+    const encodedUpdatedConnectionString = encodeURIComponent(encodeURIComponent(updatedConnectionString));
+    const documentDbUrl = `vscode://ms-azuretools.vscode-documentdb?connectionString=${encodedUpdatedConnectionString}`;
+    return documentDbUrl;
   }
 
-  private openVsCodeButtonClick(): void {
+  private getCosmosDbUrl() {
     const activeTab = useTabs.getState().activeTab;
     const resourceId = encodeURIComponent(userContext.databaseAccount.id);
     const database = encodeURIComponent(activeTab?.collection?.databaseId);
     const container = encodeURIComponent(activeTab?.collection?.id());
     const baseUrl = `vscode://ms-azuretools.vscode-cosmosdb?resourceId=${resourceId}`;
     const vscodeUrl = activeTab ? `${baseUrl}&database=${database}&container=${container}` : baseUrl;
-    const startTime = Date.now();
-    let vsCodeNotOpened = false;
+    return vscodeUrl;
+  }
 
-    setTimeout(() => {
-      const timeOutTime = Date.now() - startTime;
-      if (!vsCodeNotOpened && timeOutTime < 1050) {
-        vsCodeNotOpened = true;
-        useDialog.getState().openDialog(openVSCodeDialogProps);
-      }
-    }, 1000);
+  private getVSCodeUrl(): string {
+    const isvCore = (userContext.apiType || userContext.databaseAccount.kind) === "VCoreMongo";
+    return isvCore ? this.getDocumentDbUrl() : this.getCosmosDbUrl();
+  }
 
-    const link = document.createElement("a");
-    link.href = vscodeUrl;
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-
-    try {
-      link.click();
-      document.body.removeChild(link);
-      TelemetryProcessor.traceStart(Action.OpenVSCode);
-    } catch (error) {
-      if (!vsCodeNotOpened) {
-        vsCodeNotOpened = true;
-        logConsoleError(`Failed to open VS Code: ${getErrorMessage(error)}`);
-      }
-    }
-
+  public openInVsCode(): void {
+    const vscodeUrl = this.getVSCodeUrl();
     const openVSCodeDialogProps: DialogProps = {
       linkProps: {
         linkText: "Download Visual Studio Code",
@@ -335,15 +336,19 @@ export default class Explorer {
       secondaryButtonText: "Cancel",
 
       onPrimaryButtonClick: () => {
-        vsCodeNotOpened = false;
-        this.openVsCodeButtonClick();
-        useDialog.getState().closeDialog();
+        try {
+          window.location.href = vscodeUrl;
+          TelemetryProcessor.traceStart(Action.OpenVSCode);
+        } catch (error) {
+          logConsoleError(`Failed to open VS Code: ${getErrorMessage(error)}`);
+        }
       },
       onSecondaryButtonClick: () => {
         useDialog.getState().closeDialog();
         TelemetryProcessor.traceCancel(Action.OpenVSCode);
       },
     };
+    useDialog.getState().openDialog(openVSCodeDialogProps);
   }
 
   public async openCESCVAFeedbackBlade(): Promise<void> {
@@ -1142,8 +1147,8 @@ export default class Explorer {
     }
   }
 
-  public openUploadItemsPane(): void {
-    useSidePanel.getState().openSidePanel("Upload " + getUploadName(), <UploadItemsPane />);
+  public openUploadItemsPane(onUpload?: (data: UploadDetailsRecord[]) => void): void {
+    useSidePanel.getState().openSidePanel("Upload " + getUploadName(), <UploadItemsPane onUpload={onUpload} />);
   }
   public openExecuteSprocParamsPanel(storedProcedure: StoredProcedure): void {
     useSidePanel
@@ -1151,7 +1156,7 @@ export default class Explorer {
       .openSidePanel("Input parameters", <ExecuteSprocParamsPane storedProcedure={storedProcedure} />);
   }
 
-  public getDownloadModalConent(fileName: string): JSX.Element {
+  public getDownloadModalContent(fileName: string): JSX.Element {
     if (useNotebook.getState().isPhoenixNotebooks) {
       return (
         <>
@@ -1175,7 +1180,10 @@ export default class Explorer {
         ? this.refreshDatabaseForResourceToken()
         : await this.refreshAllDatabases(); // await: we rely on the databases to be loaded before restoring the tabs further in the flow
     }
-    await useNotebook.getState().refreshNotebooksEnabledStateForAccount();
+
+    if (!isFabricNative()) {
+      await useNotebook.getState().refreshNotebooksEnabledStateForAccount();
+    }
 
     // TODO: remove reference to isNotebookEnabled and isNotebooksEnabledForAccount
     const isNotebookEnabled =
@@ -1197,7 +1205,7 @@ export default class Explorer {
       await this.initNotebooks(userContext.databaseAccount);
     }
 
-    if (userContext.authType === AuthType.AAD && userContext.apiType === "SQL") {
+    if (userContext.authType === AuthType.AAD && userContext.apiType === "SQL" && !isFabricNative()) {
       const throughputBucketsEnabled = await featureRegistered(userContext.subscriptionId, "ThroughputBucketing");
       updateUserContext({ throughputBucketsEnabled });
     }

@@ -8,6 +8,7 @@ import {
 import { useNotebook } from "Explorer/Notebook/useNotebook";
 import { DocumentsTabV2 } from "Explorer/Tabs/DocumentsTabV2/DocumentsTabV2";
 import { isFabricMirrored } from "Platform/Fabric/FabricUtil";
+import { useDataplaneRbacAuthorization } from "Utils/AuthorizationUtils";
 import * as ko from "knockout";
 import * as _ from "underscore";
 import * as Constants from "../../Common/Constants";
@@ -21,7 +22,7 @@ import { readTriggers } from "../../Common/dataAccess/readTriggers";
 import { readUserDefinedFunctions } from "../../Common/dataAccess/readUserDefinedFunctions";
 import * as DataModels from "../../Contracts/DataModels";
 import * as ViewModels from "../../Contracts/ViewModels";
-import { UploadDetailsRecord } from "../../Contracts/ViewModels";
+import { BulkInsertResult, UploadDetailsRecord } from "../../Contracts/ViewModels";
 import { Action, ActionModifiers } from "../../Shared/Telemetry/TelemetryConstants";
 import * as TelemetryProcessor from "../../Shared/Telemetry/TelemetryProcessor";
 import { userContext } from "../../UserContext";
@@ -479,9 +480,8 @@ export default class Collection implements ViewModels.Collection {
         node: this,
         title: title,
         tabPath: "",
-
+        password: useDataplaneRbacAuthorization(userContext) ? userContext.aadToken : userContext.masterKey || "",
         collection: this,
-        masterKey: userContext.masterKey || "",
         collectionPartitionKeyProperty: this.partitionKeyProperties?.[0],
         collectionId: this.id(),
         databaseId: this.databaseId,
@@ -737,7 +737,7 @@ export default class Collection implements ViewModels.Collection {
       title: title,
       tabPath: "",
       collection: this,
-      masterKey: userContext.masterKey || "",
+      password: useDataplaneRbacAuthorization(userContext) ? userContext.aadToken : userContext.masterKey || "",
       collectionPartitionKeyProperty: this.partitionKeyProperties?.[0],
       collectionId: this.id(),
       databaseId: this.databaseId,
@@ -1092,17 +1092,13 @@ export default class Collection implements ViewModels.Collection {
     });
   }
 
-  public async bulkInsertDocuments(documents: JSONObject[]): Promise<{
-    numSucceeded: number;
-    numFailed: number;
-    numThrottled: number;
-    errors: string[];
-  }> {
-    const stats = {
+  public async bulkInsertDocuments(documents: JSONObject[]): Promise<BulkInsertResult> {
+    const stats: BulkInsertResult = {
       numSucceeded: 0,
       numFailed: 0,
       numThrottled: 0,
       errors: [] as string[],
+      resources: [],
     };
 
     const chunkSize = 100; // 100 is the max # of bulk operations the SDK currently accepts
@@ -1120,6 +1116,7 @@ export default class Collection implements ViewModels.Collection {
         responses.forEach((response, index) => {
           if (response.statusCode === 201) {
             stats.numSucceeded++;
+            stats.resources.push(response.resourceBody);
           } else if (response.statusCode === 429) {
             documentsToAttempt.push(attemptedDocuments[index]);
           } else if (response.statusCode === 409) {
@@ -1152,18 +1149,22 @@ export default class Collection implements ViewModels.Collection {
       numFailed: 0,
       numThrottled: 0,
       errors: [],
+      resources: [],
     };
 
     try {
       const parsedContent = JSON.parse(documentContent);
       if (Array.isArray(parsedContent)) {
-        const { numSucceeded, numFailed, numThrottled, errors } = await this.bulkInsertDocuments(parsedContent);
+        const { numSucceeded, numFailed, numThrottled, errors, resources } =
+          await this.bulkInsertDocuments(parsedContent);
         record.numSucceeded = numSucceeded;
         record.numFailed = numFailed;
         record.numThrottled = numThrottled;
         record.errors = errors;
+        record.resources = record.resources.concat(resources);
       } else {
-        await createDocument(this, parsedContent);
+        const resource = await createDocument(this, parsedContent);
+        record.resources.push(resource);
         record.numSucceeded++;
       }
 

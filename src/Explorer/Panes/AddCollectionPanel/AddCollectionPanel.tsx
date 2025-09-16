@@ -25,7 +25,7 @@ import { FullTextPoliciesComponent } from "Explorer/Controls/FullTextSeach/FullT
 import { VectorEmbeddingPoliciesComponent } from "Explorer/Controls/VectorSearch/VectorEmbeddingPoliciesComponent";
 import {
   AllPropertiesIndexed,
-  AnalyticalStorageContent,
+  AnalyticalStoreHeader,
   ContainerVectorPolicyTooltipContent,
   FullTextPolicyDefault,
   getPartitionKey,
@@ -49,14 +49,10 @@ import { Action } from "Shared/Telemetry/TelemetryConstants";
 import * as TelemetryProcessor from "Shared/Telemetry/TelemetryProcessor";
 import { userContext } from "UserContext";
 import { getCollectionName } from "Utils/APITypeUtils";
-import {
-  isCapabilityEnabled,
-  isFullTextSearchEnabled,
-  isServerlessAccount,
-  isVectorSearchEnabled,
-} from "Utils/CapabilityUtils";
+import { isCapabilityEnabled, isServerlessAccount, isVectorSearchEnabled } from "Utils/CapabilityUtils";
 import { getUpsellMessage } from "Utils/PricingUtils";
 import { ValidCosmosDbIdDescription, ValidCosmosDbIdInputPattern } from "Utils/ValidationUtils";
+import * as AutoPilotUtils from "../../../Utils/AutoPilotUtils";
 import { CollapsibleSectionComponent } from "../../Controls/CollapsiblePanel/CollapsibleSectionComponent";
 import { ThroughputInput } from "../../Controls/ThroughputInput/ThroughputInput";
 import { ContainerSampleGenerator } from "../../DataSamples/ContainerSampleGenerator";
@@ -110,6 +106,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
   private collectionThroughput: number;
   private isCollectionAutoscale: boolean;
   private isCostAcknowledged: boolean;
+  private showFullTextSearch: boolean;
 
   constructor(props: AddCollectionPanelProps) {
     super(props);
@@ -126,7 +123,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
       isSharded: userContext.apiType !== "Tables",
       partitionKey: getPartitionKey(props.isQuickstart),
       subPartitionKeys: [],
-      enableDedicatedThroughput: false,
+      enableDedicatedThroughput: isFabricNative(), // Dedicated throughput is only enabled in Fabric Native by default
       createMongoWildCardIndex:
         isCapabilityEnabled("EnableMongo") && !isCapabilityEnabled("EnableMongo16MBDocumentSupport"),
       useHashV1: false,
@@ -144,6 +141,8 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
       fullTextIndexes: [],
       fullTextPolicyValidated: true,
     };
+
+    this.showFullTextSearch = userContext.apiType === "SQL";
   }
 
   componentDidMount(): void {
@@ -266,7 +265,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
 
         <div className="panelMainContent">
           {!(isFabricNative() && this.props.databaseId !== undefined) && (
-            <Stack hidden={userContext.apiType === "Tables"}>
+            <Stack hidden={userContext.apiType === "Tables"} style={{ marginBottom: -2 }}>
               <Stack horizontal>
                 <span className="mandatoryStar">*&nbsp;</span>
                 <Text className="panelTextBold" variant="small">
@@ -337,7 +336,6 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                     size={40}
                     className="panelTextField"
                     aria-label="New database id, Type a new database id"
-                    autoFocus
                     tabIndex={0}
                     value={this.state.newDatabaseId}
                     onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
@@ -408,12 +406,12 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                   responsiveMode={999}
                 />
               )}
-              <Separator className="panelSeparator" />
+              <Separator className="panelSeparator" style={{ marginTop: -4, marginBottom: -4 }} />
             </Stack>
           )}
 
           <Stack>
-            <Stack horizontal>
+            <Stack horizontal style={{ marginTop: -5, marginBottom: 1 }}>
               <span className="mandatoryStar">*&nbsp;</span>
               <Text className="panelTextBold" variant="small">
                 {`${getCollectionName()} id`}
@@ -450,11 +448,12 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                 this.setState({ collectionId: event.target.value })
               }
             />
+            <Separator className="panelSeparator" style={{ marginTop: -5, marginBottom: -5 }} />
           </Stack>
 
           {this.shouldShowIndexingOptionsForFreeTierAccount() && (
             <Stack>
-              <Stack horizontal>
+              <Stack horizontal style={{ marginTop: -4, marginBottom: -5 }}>
                 <span className="mandatoryStar">*&nbsp;</span>
                 <Text className="panelTextBold" variant="small">
                   Indexing
@@ -500,7 +499,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
             (!this.state.isSharedThroughputChecked ||
               this.props.explorer.isFixedCollectionWithSharedThroughputSupported()) && (
               <Stack>
-                <Stack horizontal>
+                <Stack horizontal style={{ marginTop: -5, marginBottom: -4 }}>
                   <span className="mandatoryStar">*&nbsp;</span>
                   <Text className="panelTextBold" variant="small">
                     Sharding
@@ -556,7 +555,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
 
           {this.state.isSharded && (
             <Stack>
-              <Stack horizontal>
+              <Stack horizontal style={{ marginTop: -5, marginBottom: -4 }}>
                 <span className="mandatoryStar">*&nbsp;</span>
                 <Text className="panelTextBold" variant="small">
                   {getPartitionKeyName()}
@@ -600,7 +599,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
               {userContext.apiType === "SQL" &&
                 this.state.subPartitionKeys.map((subPartitionKey: string, index: number) => {
                   return (
-                    <Stack style={{ marginBottom: 8 }} key={`uniqueKey${index}`} horizontal>
+                    <Stack style={{ marginBottom: 2, marginTop: -5 }} key={`uniqueKey${index}`} horizontal>
                       <div
                         style={{
                           width: "20px",
@@ -646,7 +645,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                     </Stack>
                   );
                 })}
-              {!isFabricNative() && userContext.apiType === "SQL" && (
+              {userContext.apiType === "SQL" && (
                 <Stack className="panelGroupSpacing">
                   <DefaultButton
                     styles={{ root: { padding: 0, width: 200, height: 30 }, label: { fontSize: 12 } }}
@@ -668,6 +667,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                   )}
                 </Stack>
               )}
+              <Separator className="panelSeparator" style={{ marginTop: 2, marginBottom: -4 }} />
             </Stack>
           )}
 
@@ -709,7 +709,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
             </Stack>
           )}
 
-          {this.shouldShowCollectionThroughputInput() && (
+          {this.shouldShowCollectionThroughputInput() && !isFabricNative() && (
             <ThroughputInput
               showFreeTierExceedThroughputTooltip={isFreeTierAccount() && !isFirstResourceCreated}
               isDatabase={false}
@@ -728,7 +728,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
           )}
 
           {!isFabricNative() && userContext.apiType === "SQL" && (
-            <Stack>
+            <Stack style={{ marginTop: -2, marginBottom: -4 }}>
               {UniqueKeysHeader()}
               {this.state.uniqueKeys.map((uniqueKey: string, i: number): JSX.Element => {
                 return (
@@ -742,7 +742,6 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                           : "Comma separated paths e.g. /firstName,/address/zipCode"
                       }
                       className="panelTextField"
-                      autoFocus
                       value={uniqueKey}
                       onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                         const uniqueKeys = this.state.uniqueKeys.map((uniqueKey: string, j: number) => {
@@ -777,10 +776,14 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
             </Stack>
           )}
 
+          {!isFabricNative() && userContext.apiType === "SQL" && (
+            <Separator className="panelSeparator" style={{ marginTop: -15, marginBottom: -4 }} />
+          )}
+
           {shouldShowAnalyticalStoreOptions() && (
-            <Stack className="panelGroupSpacing">
+            <Stack className="panelGroupSpacing" style={{ marginTop: -4 }}>
               <Text className="panelTextBold" variant="small">
-                {AnalyticalStorageContent()}
+                {AnalyticalStoreHeader()}
               </Text>
 
               <Stack horizontal verticalAlign="center">
@@ -821,7 +824,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                 <Stack className="panelGroupSpacing">
                   <Text variant="small">
                     Azure Synapse Link is required for creating an analytical store{" "}
-                    {getCollectionName().toLocaleLowerCase()}. Enable Synapse Link for this Cosmos DB account.{" "}
+                    {getCollectionName().toLocaleLowerCase()}. Enable Synapse Link for this Cosmos DB account. <br />
                     <Link
                       href="https://aka.ms/cosmosdb-synapselink"
                       target="_blank"
@@ -1131,7 +1134,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
   // }
 
   private shouldShowCollectionThroughputInput(): boolean {
-    if (isFabricNative() || isServerlessAccount()) {
+    if (isServerlessAccount()) {
       return false;
     }
 
@@ -1161,7 +1164,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
   }
 
   private shouldShowFullTextSearchParameters() {
-    return isFullTextSearchEnabled() && (isServerlessAccount() || this.shouldShowCollectionThroughputInput());
+    return !isFabricNative() && this.showFullTextSearch;
   }
 
   private parseUniqueKeys(): DataModels.UniqueKeyPolicy {
@@ -1316,7 +1319,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
       };
     }
 
-    if (this.shouldShowFullTextSearchParameters()) {
+    if (this.showFullTextSearch) {
       indexingPolicy.fullTextIndexes = this.state.fullTextIndexes;
     }
 
@@ -1350,7 +1353,12 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
     let offerThroughput: number;
     let autoPilotMaxThroughput: number;
 
-    if (databaseLevelThroughput) {
+    // Throughput
+    if (isFabricNative()) {
+      // Fabric Native accounts are always autoscale and have a fixed throughput of 5K
+      autoPilotMaxThroughput = AutoPilotUtils.autoPilotThroughput5K;
+      offerThroughput = undefined;
+    } else if (databaseLevelThroughput) {
       if (this.state.createNewDatabase) {
         if (this.isNewDatabaseAutoscale) {
           autoPilotMaxThroughput = this.newDatabaseThroughput;

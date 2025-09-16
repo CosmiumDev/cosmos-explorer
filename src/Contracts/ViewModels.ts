@@ -1,4 +1,5 @@
 import {
+  ItemDefinition,
   JSONObject,
   QueryMetrics,
   Resource,
@@ -30,7 +31,10 @@ export interface UploadDetailsRecord {
   numFailed: number;
   numThrottled: number;
   errors: string[];
+  resources?: ItemDefinition[];
 }
+
+export type BulkInsertResult = Omit<UploadDetailsRecord, "fileName">;
 
 export interface QueryResultsMetadata {
   hasMoreResults: boolean;
@@ -46,6 +50,7 @@ export interface QueryResults extends QueryResultsMetadata {
   roundTrips?: number;
   headers?: any;
   queryMetrics?: QueryMetrics;
+  ruThresholdExceeded?: boolean;
 }
 
 export interface Button {
@@ -438,6 +443,7 @@ export interface DataExplorerInputsFrame {
     [key: string]: string;
   };
   feedbackPolicies?: any;
+  aadToken?: string;
 }
 
 export interface SelfServeFrameInputs {

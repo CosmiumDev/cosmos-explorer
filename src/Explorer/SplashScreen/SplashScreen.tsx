@@ -24,10 +24,12 @@ import { ReactTabKind, useTabs } from "hooks/useTabs";
 import * as React from "react";
 import ConnectIcon from "../../../images/Connect_color.svg";
 import ContainersIcon from "../../../images/Containers.svg";
+import CosmosDBIcon from "../../../images/CosmosDB-logo.svg";
 import LinkIcon from "../../../images/Link_blue.svg";
 import PowerShellIcon from "../../../images/PowerShell.svg";
 import CopilotIcon from "../../../images/QueryCopilotNewLogo.svg";
 import QuickStartIcon from "../../../images/Quickstart_Lightning.svg";
+import VisualStudioIcon from "../../../images/VisualStudio.svg";
 import NotebookIcon from "../../../images/notebook/Notebook-resource.svg";
 import CollectionIcon from "../../../images/tree-collection.svg";
 import * as Constants from "../../Common/Constants";
@@ -119,14 +121,14 @@ export class SplashScreen extends React.Component<SplashScreenProps> {
   };
 
   private getSplashScreenButtons = (): JSX.Element => {
-    if (
-      userContext.apiType === "SQL" &&
-      useQueryCopilot.getState().copilotEnabled &&
-      useDatabases.getState().sampleDataResourceTokenCollection
-    ) {
+    if (userContext.apiType === "SQL") {
       return (
-        <Stack style={{ width: "66%", cursor: "pointer", margin: "40px auto" }} tokens={{ childrenGap: 16 }}>
-          <Stack horizontal tokens={{ childrenGap: 16 }}>
+        <Stack
+          className="splashStackContainer"
+          style={{ width: "66%", cursor: "pointer", margin: "40px auto" }}
+          tokens={{ childrenGap: 16 }}
+        >
+          <Stack className="splashStackRow" horizontal>
             <SplashScreenButton
               imgSrc={QuickStartIcon}
               title={"Launch quick start"}
@@ -146,26 +148,19 @@ export class SplashScreen extends React.Component<SplashScreenProps> {
               }}
             />
           </Stack>
-          <Stack horizontal tokens={{ childrenGap: 16 }}>
-            {useQueryCopilot.getState().copilotEnabled && (
-              <SplashScreenButton
-                imgSrc={CopilotIcon}
-                title={"Query faster with Query Advisor"}
-                description={
-                  "Query Advisor is your AI buddy that helps you write Azure Cosmos DB queries like a pro. Try it using our sample data set now!"
-                }
-                onClick={() => {
-                  const copilotVersion = userContext.features.copilotVersion;
-                  if (copilotVersion === "v1.0") {
-                    useTabs.getState().openAndActivateReactTab(ReactTabKind.QueryCopilot);
-                  } else if (copilotVersion === "v2.0") {
-                    const sampleCollection = useDatabases.getState().sampleDataResourceTokenCollection;
-                    sampleCollection.onNewQueryClick(sampleCollection, undefined);
-                  }
-                  traceOpen(Action.OpenQueryCopilotFromSplashScreen, { apiType: userContext.apiType });
-                }}
-              />
-            )}
+          <Stack className="splashStackRow" horizontal>
+            <SplashScreenButton
+              imgSrc={CosmosDBIcon}
+              imgSize={35}
+              title={"Azure Cosmos DB Samples Gallery"}
+              description={
+                "Discover samples that showcase scalable, intelligent app patterns. Try one now to see how fast you can go from concept to code with Cosmos DB"
+              }
+              onClick={() => {
+                window.open("https://azurecosmosdb.github.io/gallery/?tags=example", "_blank");
+                traceOpen(Action.LearningResourcesClicked, { apiType: userContext.apiType });
+              }}
+            />
             <SplashScreenButton
               imgSrc={ConnectIcon}
               title={"Connect"}
@@ -207,6 +202,7 @@ export class SplashScreen extends React.Component<SplashScreenProps> {
               sample data, query.
             </TeachingBubble>
           )}
+        {/*TODO: convert below to use SplashScreenButton */}
         {mainItems.map((item) => (
           <Stack
             id={`mainButton-${item.id}`}
@@ -290,10 +286,10 @@ export class SplashScreen extends React.Component<SplashScreenProps> {
         <form className="connectExplorerFormContainer">
           <div className="splashScreenContainer">
             <div className="splashScreen">
-              <h1 className="title" role="heading" aria-label={title}>
+              <h2 className="title" role="heading" aria-label={title}>
                 {title}
                 <FeaturePanelLauncher />
-              </h1>
+              </h2>
               <div className="subtitle">{subtitle}</div>
               {this.getSplashScreenButtons()}
               {useCarousel.getState().showCoachMark && (
@@ -458,10 +454,10 @@ export class SplashScreen extends React.Component<SplashScreenProps> {
     }
 
     if (userContext.apiType === "VCoreMongo") {
-      icon = ContainersIcon;
-      title = "Connect with Studio 3T";
-      description = "Prefer Studio 3T? Find your connection strings here";
-      onClick = () => useTabs.getState().openAndActivateReactTab(ReactTabKind.Connect);
+      icon = VisualStudioIcon;
+      title = "Connect with VS Code";
+      description = "Query and Manage your MongoDB cluster in Visual Studio Code";
+      onClick = () => this.container.openInVsCode();
     }
 
     return {
@@ -471,6 +467,34 @@ export class SplashScreen extends React.Component<SplashScreenProps> {
       onClick: onClick,
     };
   }
+
+  //TODO: Re-enable lint rule when query copilot is reinstated in DE
+  /* eslint-disable-next-line no-unused-vars */
+  private getQueryCopilotCard = (): JSX.Element => {
+    return (
+      <>
+        {useQueryCopilot.getState().copilotEnabled && (
+          <SplashScreenButton
+            imgSrc={CopilotIcon}
+            title={"Query faster with Query Advisor"}
+            description={
+              "Query Advisor is your AI buddy that helps you write Azure Cosmos DB queries like a pro. Try it using our sample data set now!"
+            }
+            onClick={() => {
+              const copilotVersion = userContext.features.copilotVersion;
+              if (copilotVersion === "v1.0") {
+                useTabs.getState().openAndActivateReactTab(ReactTabKind.QueryCopilot);
+              } else if (copilotVersion === "v2.0") {
+                const sampleCollection = useDatabases.getState().sampleDataResourceTokenCollection;
+                sampleCollection.onNewQueryClick(sampleCollection, undefined);
+              }
+              traceOpen(Action.OpenQueryCopilotFromSplashScreen, { apiType: userContext.apiType });
+            }}
+          />
+        )}
+      </>
+    );
+  };
 
   private decorateOpenCollectionActivity({ databaseId, collectionId }: MostRecentActivity.OpenCollectionItem) {
     return {
