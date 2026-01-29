@@ -11,12 +11,23 @@ const accountName = urlSearchParams.get("accountName") || "portal-sql-runner-wes
 const selfServeType = urlSearchParams.get("selfServeType") || "example";
 const iframeSrc = urlSearchParams.get("iframeSrc") || "explorer.html?platform=Portal&disablePortalInitCache";
 const authToken = urlSearchParams.get("token");
+const enablecontainercopy = urlSearchParams.get("enablecontainercopy");
 
-const nosqlRbacToken = urlSearchParams.get("nosqlRbacToken") || process.env.NOSQL_TESTACCOUNT_TOKEN || "";
+const nosqlRbacToken =
+  urlSearchParams.get("nosqlRbacToken") ||
+  (enablecontainercopy ? process.env.NOSQL_CONTAINERCOPY_TESTACCOUNT_TOKEN : process.env.NOSQL_TESTACCOUNT_TOKEN) ||
+  "";
 const nosqlReadOnlyRbacToken =
   urlSearchParams.get("nosqlReadOnlyRbacToken") || process.env.NOSQL_READONLY_TESTACCOUNT_TOKEN || "";
 const tableRbacToken = urlSearchParams.get("tableRbacToken") || process.env.TABLE_TESTACCOUNT_TOKEN || "";
 const gremlinRbacToken = urlSearchParams.get("gremlinRbacToken") || process.env.GREMLIN_TESTACCOUNT_TOKEN || "";
+
+const cassandraRbacToken = urlSearchParams.get("cassandraRbacToken") || process.env.CASSANDRA_TESTACCOUNT_TOKEN || "";
+
+const mongoRbacToken = urlSearchParams.get("mongoRbacToken") || process.env.MONGO_TESTACCOUNT_TOKEN || "";
+const mongo32RbacToken = urlSearchParams.get("mongo32RbacToken") || process.env.MONGO32_TESTACCOUNT_TOKEN || "";
+const mongoReadOnlyRbacToken =
+  urlSearchParams.get("mongoReadOnlyRbacToken") || process.env.MONGO_READONLY_TESTACCOUNT_TOKEN || "";
 
 const initTestExplorer = async (): Promise<void> => {
   updateUserContext({
@@ -41,6 +52,18 @@ const initTestExplorer = async (): Promise<void> => {
     case "tables":
       rbacToken = tableRbacToken;
       break;
+    case "cassandra":
+      rbacToken = cassandraRbacToken;
+      break;
+    case "mongo":
+      rbacToken = mongoRbacToken;
+      break;
+    case "mongo32":
+      rbacToken = mongo32RbacToken;
+      break;
+    case "mongo-readonly":
+      rbacToken = mongoReadOnlyRbacToken;
+      break;
   }
 
   if (rbacToken.length > 0) {
@@ -64,6 +87,7 @@ const initTestExplorer = async (): Promise<void> => {
       authorizationToken: `Bearer ${authToken}`,
       aadToken: rbacToken,
       features: {},
+      containerCopyEnabled: enablecontainercopy === "true",
       hasWriteAccess: true,
       csmEndpoint: "https://management.azure.com",
       dnsSuffix: "documents.azure.com",

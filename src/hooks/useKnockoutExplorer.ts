@@ -1,4 +1,5 @@
 import * as Constants from "Common/Constants";
+import { getEnvironmentScopeEndpoint } from "Common/EnvironmentUtility";
 import { createUri } from "Common/UrlUtility";
 import { DATA_EXPLORER_RPC_VERSION } from "Contracts/DataExplorerMessagesContract";
 import { FabricMessageTypes } from "Contracts/FabricMessageTypes";
@@ -62,11 +63,13 @@ import {
   acquireTokenWithMsal,
   getAuthorizationHeader,
   getMsalInstance,
+  isDataplaneRbacEnabledForProxyApi,
 } from "../Utils/AuthorizationUtils";
 import { isInvalidParentFrameOrigin, shouldProcessMessage } from "../Utils/MessageValidation";
 import { get, getReadOnlyKeys, listKeys } from "../Utils/arm/generatedClients/cosmos/databaseAccounts";
 import * as Types from "../Utils/arm/generatedClients/cosmos/types";
 import { applyExplorerBindings } from "../applyExplorerBindings";
+import { THEME_MODE_DARK, useThemeStore } from "./useTheme";
 
 // This hook will create a new instance of Explorer.ts and bind it to the DOM
 // This hook has a LOT of magic, but ideally we can delete it once we have removed KO and switched entirely to React
@@ -83,6 +86,7 @@ export function useKnockoutExplorer(platform: Platform): Explorer {
           userContext.features.phoenixNotebooks = true;
           userContext.features.phoenixFeatures = true;
         }
+
         let explorer: Explorer;
         if (platform === Platform.Hosted) {
           explorer = await configureHosted();
@@ -331,7 +335,12 @@ async function configureHostedWithAAD(config: AAD): Promise<Explorer> {
   const resourceGroup = accountResourceId && accountResourceId.split("resourceGroups/")[1].split("/")[0];
   let aadToken;
   if (account.properties?.documentEndpoint) {
-    const hrefEndpoint = new URL(account.properties.documentEndpoint).href.replace(/\/$/, "/.default");
+    let hrefEndpoint = "";
+    if (isDataplaneRbacEnabledForProxyApi(userContext)) {
+      hrefEndpoint = getEnvironmentScopeEndpoint();
+    } else {
+      hrefEndpoint = new URL(account.properties.documentEndpoint).href.replace(/\/$/, "/.default");
+    }
     const msalInstance = await getMsalInstance();
     const cachedAccount = msalInstance.getAllAccounts()?.[0];
     msalInstance.setActiveAccount(cachedAccount);
@@ -920,6 +929,7 @@ function updateContextsFromPortalMessage(inputs: DataExplorerInputsFrame) {
     collectionCreationDefaults: inputs.defaultCollectionThroughput,
     isTryCosmosDBSubscription: inputs.isTryCosmosDBSubscription,
     feedbackPolicies: inputs.feedbackPolicies,
+    ...(inputs.sessionId && { sessionId: inputs.sessionId }), // Remove conditional once Portal sends sessionId
   });
 
   if (inputs.isPostgresAccount) {
@@ -953,6 +963,10 @@ function updateContextsFromPortalMessage(inputs: DataExplorerInputsFrame) {
     Object.assign(userContext.features, extractFeatures(new URLSearchParams(inputs.features)));
   }
 
+  if (configContext.platform === Platform.Portal && inputs.containerCopyEnabled && userContext.apiType === "SQL") {
+    Object.assign(userContext.features, { enableContainerCopy: inputs.containerCopyEnabled });
+  }
+
   if (inputs.flights) {
     if (inputs.flights.indexOf(Flights.AutoscaleTest) !== -1) {
       userContext.features.autoscaleDefault;
@@ -977,6 +991,21 @@ function updateContextsFromPortalMessage(inputs: DataExplorerInputsFrame) {
     }
     if (inputs.flights.indexOf(Flights.PublicGallery) !== -1) {
       userContext.features.publicGallery = true;
+    }
+  }
+
+  // Handle initial theme from portal
+  if (inputs.theme && inputs.theme.mode !== undefined) {
+    const isDark = inputs.theme.mode === THEME_MODE_DARK;
+    useThemeStore.setState({
+      isDarkMode: isDark,
+      themeMode: inputs.theme.mode,
+    });
+
+    if (isDark) {
+      document.body.classList.add("isDarkMode");
+    } else {
+      document.body.classList.remove("isDarkMode");
     }
   }
 }

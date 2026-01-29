@@ -42,7 +42,7 @@ import {
 } from "Explorer/Panes/AddCollectionPanel/AddCollectionPanelUtility";
 import { useSidePanel } from "hooks/useSidePanel";
 import { useTeachingBubble } from "hooks/useTeachingBubble";
-import { isFabricNative } from "Platform/Fabric/FabricUtil";
+import { DEFAULT_FABRIC_NATIVE_CONTAINER_THROUGHPUT, isFabricNative } from "Platform/Fabric/FabricUtil";
 import React from "react";
 import { CollectionCreation } from "Shared/Constants";
 import { Action } from "Shared/Telemetry/TelemetryConstants";
@@ -52,7 +52,6 @@ import { getCollectionName } from "Utils/APITypeUtils";
 import { isCapabilityEnabled, isServerlessAccount, isVectorSearchEnabled } from "Utils/CapabilityUtils";
 import { getUpsellMessage } from "Utils/PricingUtils";
 import { ValidCosmosDbIdDescription, ValidCosmosDbIdInputPattern } from "Utils/ValidationUtils";
-import * as AutoPilotUtils from "../../../Utils/AutoPilotUtils";
 import { CollapsibleSectionComponent } from "../../Controls/CollapsiblePanel/CollapsibleSectionComponent";
 import { ThroughputInput } from "../../Controls/ThroughputInput/ThroughputInput";
 import { ContainerSampleGenerator } from "../../DataSamples/ContainerSampleGenerator";
@@ -66,6 +65,8 @@ export interface AddCollectionPanelProps {
   explorer: Explorer;
   databaseId?: string;
   isQuickstart?: boolean;
+  isCopyJobFlow?: boolean;
+  onSubmitSuccess?: (collectionData: { databaseId: string; collectionId: string }) => void;
 }
 
 export const DefaultVectorEmbeddingPolicy: DataModels.VectorEmbeddingPolicy = {
@@ -349,9 +350,14 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                         label={`Share throughput across ${getCollectionName(true).toLocaleLowerCase()}`}
                         checked={this.state.isSharedThroughputChecked}
                         styles={{
-                          text: { fontSize: 12 },
+                          text: { fontSize: 12, color: "var(--colorNeutralForeground1)" },
                           checkbox: { width: 12, height: 12 },
                           label: { padding: 0, alignItems: "center" },
+                          root: {
+                            selectors: {
+                              ":hover .ms-Checkbox-text": { color: "var(--colorNeutralForeground1)" },
+                            },
+                          },
                         }}
                         onChange={(ev: React.FormEvent<HTMLElement>, isChecked: boolean) =>
                           this.setState({ isSharedThroughputChecked: isChecked })
@@ -648,7 +654,27 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
               {userContext.apiType === "SQL" && (
                 <Stack className="panelGroupSpacing">
                   <DefaultButton
-                    styles={{ root: { padding: 0, width: 200, height: 30 }, label: { fontSize: 12 } }}
+                    styles={{
+                      root: {
+                        padding: 0,
+                        width: 200,
+                        height: 30,
+                        backgroundColor: "var(--colorNeutralBackground2)",
+                        color: "var(--colorNeutralForeground1)",
+                        borderColor: "var(--colorNeutralStroke1)",
+                      },
+                      rootHovered: {
+                        backgroundColor: "var(--colorNeutralBackground3)",
+                        color: "var(--colorNeutralForeground1)",
+                      },
+                      rootPressed: {
+                        backgroundColor: "var(--colorBrandBackgroundPressed)",
+                        color: "var(--colorNeutralForegroundOnBrand)",
+                      },
+                      label: {
+                        fontSize: 12,
+                      },
+                    }}
                     hidden={this.state.useHashV1}
                     disabled={this.state.subPartitionKeys.length >= Constants.BackendDefaults.maxNumMultiHashPartition}
                     onClick={() => this.setState({ subPartitionKeys: [...this.state.subPartitionKeys, ""] })}
@@ -656,7 +682,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                     Add hierarchical partition key
                   </DefaultButton>
                   {this.state.subPartitionKeys.length > 0 && (
-                    <Text variant="small">
+                    <Text variant="small" style={{ color: "var(--colorNeutralForeground1)" }}>
                       <Icon iconName="InfoSolid" className="removeIcon" tabIndex={0} /> This feature allows you to
                       partition your data with up to three levels of keys for better data distribution. Requires .NET
                       V3, Java V4 SDK, or preview JavaScript V3 SDK.{" "}
@@ -677,9 +703,14 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                 label={`Provision dedicated throughput for this ${getCollectionName().toLocaleLowerCase()}`}
                 checked={this.state.enableDedicatedThroughput}
                 styles={{
-                  text: { fontSize: 12 },
+                  text: { fontSize: 12, color: "var(--colorNeutralForeground1)" },
                   checkbox: { width: 12, height: 12 },
                   label: { padding: 0, alignItems: "center" },
+                  root: {
+                    selectors: {
+                      ":hover .ms-Checkbox-text": { color: "var(--colorNeutralForeground1)" },
+                    },
+                  },
                 }}
                 onChange={(ev: React.FormEvent<HTMLElement>, isChecked: boolean) =>
                   this.setState({ enableDedicatedThroughput: isChecked })
@@ -768,7 +799,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
 
               <ActionButton
                 iconProps={{ iconName: "Add" }}
-                styles={{ root: { padding: 0 }, label: { fontSize: 12 } }}
+                styles={{ root: { padding: 0 }, label: { fontSize: 12, color: "var(--colorNeutralForeground1)" } }}
                 onClick={() => this.setState({ uniqueKeys: [...this.state.uniqueKeys, ""] })}
               >
                 Add unique key
@@ -822,7 +853,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
 
               {!isSynapseLinkEnabled() && (
                 <Stack className="panelGroupSpacing">
-                  <Text variant="small">
+                  <Text variant="small" style={{ color: "var(--colorNeutralForeground1)" }}>
                     Azure Synapse Link is required for creating an analytical store{" "}
                     {getCollectionName().toLocaleLowerCase()}. Enable Synapse Link for this Cosmos DB account. <br />
                     <Link
@@ -894,6 +925,8 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                       ) => {
                         this.setState({ fullTextPolicy, fullTextIndexes, fullTextPolicyValidated });
                       }}
+                      // Remove when multi language support on container create issue is fixed
+                      englishOnly={true}
                     />
                   </Stack>
                 </Stack>
@@ -934,9 +967,14 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                       label="Create a Wildcard Index on all fields"
                       checked={this.state.createMongoWildCardIndex}
                       styles={{
-                        text: { fontSize: 12 },
+                        text: { fontSize: 12, color: "var(--colorNeutralForeground1)" },
                         checkbox: { width: 12, height: 12 },
                         label: { padding: 0, alignItems: "center" },
+                        root: {
+                          selectors: {
+                            ":hover .ms-Checkbox-text": { color: "var(--colorNeutralForeground1)" },
+                          },
+                        },
                       }}
                       onChange={(ev: React.FormEvent<HTMLElement>, isChecked: boolean) =>
                         this.setState({ createMongoWildCardIndex: isChecked })
@@ -951,15 +989,20 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
                       label="My application uses an older Cosmos .NET or Java SDK version (.NET V1 or Java V2)"
                       checked={this.state.useHashV1}
                       styles={{
-                        text: { fontSize: 12 },
+                        text: { fontSize: 12, color: "var(--colorNeutralForeground1)" },
                         checkbox: { width: 12, height: 12 },
                         label: { padding: 0, alignItems: "center", wordWrap: "break-word", whiteSpace: "break-spaces" },
+                        root: {
+                          selectors: {
+                            ":hover .ms-Checkbox-text": { color: "var(--colorNeutralForeground1)" },
+                          },
+                        },
                       }}
                       onChange={(ev: React.FormEvent<HTMLElement>, isChecked: boolean) =>
                         this.setState({ useHashV1: isChecked, subPartitionKeys: [] })
                       }
                     />
-                    <Text variant="small">
+                    <Text variant="small" style={{ color: "var(--colorNeutralForeground1)" }}>
                       <Icon iconName="InfoSolid" className="removeIcon" /> To ensure compatibility with older SDKs, the
                       created container will use a legacy partitioning scheme that supports partition key values of size
                       only up to 101 bytes. If this is enabled, you will not be able to use hierarchical partition keys.{" "}
@@ -974,7 +1017,9 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
           )}
         </div>
 
-        <PanelFooterComponent buttonLabel="OK" isButtonDisabled={this.state.isThroughputCapExceeded} />
+        {!this.props.isCopyJobFlow && (
+          <PanelFooterComponent buttonLabel="OK" isButtonDisabled={this.state.isThroughputCapExceeded} />
+        )}
 
         {this.state.isExecuting && (
           <div>
@@ -1355,8 +1400,7 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
 
     // Throughput
     if (isFabricNative()) {
-      // Fabric Native accounts are always autoscale and have a fixed throughput of 5K
-      autoPilotMaxThroughput = AutoPilotUtils.autoPilotThroughput5K;
+      autoPilotMaxThroughput = DEFAULT_FABRIC_NATIVE_CONTAINER_THROUGHPUT;
       offerThroughput = undefined;
     } else if (databaseLevelThroughput) {
       if (this.state.createNewDatabase) {
@@ -1415,8 +1459,13 @@ export class AddCollectionPanel extends React.Component<AddCollectionPanelProps,
         }
       }
       this.setState({ isExecuting: false });
-      TelemetryProcessor.traceSuccess(Action.CreateCollection, telemetryData, startKey);
-      useSidePanel.getState().closeSidePanel();
+
+      if (this.props.isCopyJobFlow && this.props.onSubmitSuccess) {
+        this.props.onSubmitSuccess({ databaseId, collectionId });
+      } else {
+        TelemetryProcessor.traceSuccess(Action.CreateCollection, telemetryData, startKey);
+        useSidePanel.getState().closeSidePanel();
+      }
     } catch (error) {
       const errorMessage: string = getErrorMessage(error);
       this.setState({ isExecuting: false, errorMessage, showErrorDetails: true });

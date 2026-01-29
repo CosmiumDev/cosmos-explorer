@@ -1,0 +1,264 @@
+@import "../../../less/Common/Constants.less";
+
+.themedTextFieldStyles() {
+  .ms-TextField {
+    .ms-TextField-fieldGroup {
+      background-color: var(--colorNeutralBackground1);
+      border-color: var(--colorNeutralStroke1);
+    }
+
+    .ms-TextField-field {
+      color: var(--colorNeutralForeground1);
+      background-color: var(--colorNeutralBackground1);
+
+      &::placeholder {
+        color: var(--colorNeutralForeground4);
+      }
+    }
+
+    .ms-Label {
+      color: var(--colorNeutralForeground1);
+    }
+  }
+}
+
+// Common theme-aware classes
+.themeText {
+  color: var(--colorNeutralForeground1);
+}
+
+.themeTextSecondary {
+  color: var(--colorNeutralForeground2);
+}
+
+.themeLinkText {
+  color: var(--colorBrandForeground1);
+}
+
+.themeBackground {
+  background-color: var(--colorNeutralBackground1);
+}
+
+.themeBackgroundSecondary {
+  background-color: var(--colorNeutralBackground2);
+}
+
+#containerCopyWrapper {
+  background-color: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground1);
+
+  .centerContent {
+    justify-content: center;
+    align-items: center;
+  }
+  .notFoundContainer {
+    .noCopyJobsMessage {
+      font-weight: 600;
+      margin: 0 auto;
+      color: var(--colorNeutralForeground2);
+    }
+    button.createCopyJobButton {
+      color: var(--colorBrandForeground1);
+    }
+  }
+}
+.createCopyJobScreensContainer {
+  height: 100%;
+  padding: 1em 1.5em;
+  background-color: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground1);
+
+  .pointInTimeRestoreContainer, .onlineCopyContainer {
+    position: relative;
+  }
+
+  .toggle-label {
+    color: var(--colorNeutralForeground1);
+  }
+
+  .accordionHeaderText {
+    color: var(--colorNeutralForeground1);
+  }
+  
+  label {
+    padding: 0;
+  }
+  .flex-row {
+    display: flex;
+    flex-direction: row;
+    label.field-label {
+      font-weight: 600;
+    }
+    .flex-fixed-width {
+      flex: 0 0 auto;
+      width: 150px;
+    }
+    .flex-grow-col {
+      flex: 1 1 auto;
+    }
+  }
+  .databaseContainerSection {
+    label.subHeading {
+      font: inherit;
+      padding: unset;
+      font-weight: 600;
+    }
+  }
+
+  .accordionHeader {
+    button {
+      display: flex;
+      align-items: center;
+      .accordionHeaderText {
+        margin-left: 5px;
+        font-weight: 600;
+      }
+      .statusIcon {
+        margin-left: auto;
+      }
+    }
+  }
+  .popover-container {
+    border-radius: 6px;
+    button[disabled] {
+      cursor: not-allowed;
+      opacity: 0.8;
+    }
+  }
+  .foreground {
+    z-index: 10;
+    background-color: var(--colorNeutralBackground2);
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: translate(0%, -9%);
+    position: absolute;
+  }
+  .createCopyJobErrorMessageBar {
+    margin-bottom: 2em;
+  }
+  body.isDarkMode & {
+    .ms-TooltipHost .ms-Image {
+      filter: invert(1);
+    }
+
+    .themedTextFieldStyles();
+
+    .migrationTypeDescription {
+      p {
+        color: var(--colorNeutralForeground1);
+      }
+      a {
+        color: var(--colorBrandForeground1);
+      }
+    }
+  }
+  .create-container-link-btn {
+    padding: 0;
+    height: 25px;
+    color: var(--colorBrandForeground1);
+
+    &:focus {
+      outline: none;
+    }
+
+  }
+
+  /* Create collection panel */
+  .panelFormWrapper .panelMainContent {
+    padding: 0;
+  }
+
+  .createCopyJobScreensFooter {
+    margin-top: 50px;
+  }
+}
+
+.monitorCopyJobs {
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+
+  body.isDarkMode & {
+    .themedTextFieldStyles();
+  }
+
+  .ms-DetailsList {
+    width: 100%;
+
+    .ms-DetailsHeader {
+      .ms-DetailsHeader-cell {
+        padding: @DefaultSpace 20px;
+        font-weight: 600;
+        font-size: @DefaultFontSize;
+        color: var(--colorNeutralForeground1);
+        background-color: var(--colorNeutralBackground2);
+        border-bottom: @ButtonBorderWidth solid var(--colorNeutralStroke1);
+
+        &:hover {
+          background-color: var(--colorNeutralBackground3);
+        }
+      }
+      .ms-DetailsHeader-cellTitle {
+        padding-left: 20px;
+      }
+    }
+
+    .ms-DetailsRow {
+      border-bottom: @ButtonBorderWidth solid var(--colorNeutralStroke1);
+
+      &:hover {
+        background-color: var(--colorNeutralBackground2);
+      }
+
+      .ms-DetailsRow-cell {
+        padding: @MediumSpace 20px;
+        font-size: @DefaultFontSize;
+        color: var(--colorNeutralForeground1);
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+
+        .jobNameLink {
+          color: var(--colorBrandForeground1);
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+        }
+      }
+    }
+  }
+
+  button[role="button"] {
+    &.ms-Button--icon {
+      i.ms-Icon {
+        font-size: @LargeSpace;
+      }
+    }
+  }
+}
+
+.copyJobDetailsContainer {
+  padding: 1em 0 0 2em;
+
+  .ms-DetailsList {
+    width: 100%;
+    .ms-DetailsHeader-cellTitle, .ms-DetailsRow-cell {
+      padding-left: 0;
+    }
+    .ms-DetailsRow-cell {
+      font-size: @DefaultFontSize;
+      color: var(--colorNeutralForeground1);
+    }
+  }
+}
+
+.bold {
+  font-weight: 600;
+}
+
+.fullWidth {
+  width: 100%;
+  display: flex;
+    justify-content: center;
+}

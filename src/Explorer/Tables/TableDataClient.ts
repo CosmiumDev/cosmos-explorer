@@ -13,7 +13,7 @@ import { updateDocument } from "../../Common/dataAccess/updateDocument";
 import { configContext } from "../../ConfigContext";
 import * as ViewModels from "../../Contracts/ViewModels";
 import { userContext } from "../../UserContext";
-import { getAuthorizationHeader } from "../../Utils/AuthorizationUtils";
+import { getAuthorizationHeader, isDataplaneRbacEnabledForProxyApi } from "../../Utils/AuthorizationUtils";
 import * as NotificationConsoleUtils from "../../Utils/NotificationConsoleUtils";
 import { logConsoleInfo, logConsoleProgress } from "../../Utils/NotificationConsoleUtils";
 import Explorer from "../Explorer";
@@ -286,7 +286,7 @@ export class CassandraAPIDataClient extends TableDataClient {
           query,
           paginationToken,
         }),
-        beforeSend: this.setAuthorizationHeader as any,
+        beforeSend: this.setCommonHeaders as any,
         cache: false,
       });
       shouldNotify &&
@@ -440,7 +440,7 @@ export class CassandraAPIDataClient extends TableDataClient {
         keyspaceId: collection.databaseId,
         tableId: collection.id(),
       }),
-      beforeSend: this.setAuthorizationHeader as any,
+      beforeSend: this.setCommonHeaders as any,
       cache: false,
     })
       .then(
@@ -482,7 +482,7 @@ export class CassandraAPIDataClient extends TableDataClient {
         keyspaceId: collection.databaseId,
         tableId: collection.id(),
       }),
-      beforeSend: this.setAuthorizationHeader as any,
+      beforeSend: this.setCommonHeaders as any,
       cache: false,
     })
       .then(
@@ -518,7 +518,7 @@ export class CassandraAPIDataClient extends TableDataClient {
         resourceId: resourceId,
         query: query,
       }),
-      beforeSend: this.setAuthorizationHeader as any,
+      beforeSend: this.setCommonHeaders as any,
       cache: false,
     }).then(
       (data: any) => {
@@ -547,10 +547,15 @@ export class CassandraAPIDataClient extends TableDataClient {
     return cassandraEndpoint;
   }
 
-  private setAuthorizationHeader: (xhr: XMLHttpRequest) => boolean = (xhr: XMLHttpRequest): boolean => {
+  private setCommonHeaders: (xhr: XMLHttpRequest) => boolean = (xhr: XMLHttpRequest): boolean => {
     const authorizationHeaderMetadata: ViewModels.AuthorizationTokenHeaderMetadata = getAuthorizationHeader();
     xhr.setRequestHeader(authorizationHeaderMetadata.header, authorizationHeaderMetadata.token);
 
+    if (isDataplaneRbacEnabledForProxyApi(userContext)) {
+      xhr.setRequestHeader(Constants.HttpHeaders.entraIdToken, userContext.aadToken);
+    }
+
+    xhr.setRequestHeader(Constants.HttpHeaders.sessionId, userContext.sessionId);
     return true;
   };
 

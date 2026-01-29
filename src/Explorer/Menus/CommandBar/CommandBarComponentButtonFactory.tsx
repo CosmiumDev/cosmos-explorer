@@ -1,7 +1,7 @@
+import { OpenFullScreen } from "Explorer/OpenFullScreen";
 import { KeyboardAction } from "KeyboardShortcuts";
 import { isDataplaneRbacSupported } from "Utils/APITypeUtils";
 import * as React from "react";
-import { useEffect, useState } from "react";
 import AddSqlQueryIcon from "../../../../images/AddSqlQuery_16x16.svg";
 import AddStoredProcedureIcon from "../../../../images/AddStoredProcedure.svg";
 import AddTriggerIcon from "../../../../images/AddTrigger.svg";
@@ -25,12 +25,12 @@ import { useSidePanel } from "../../../hooks/useSidePanel";
 import { CommandButtonComponentProps } from "../../Controls/CommandButton/CommandButtonComponent";
 import Explorer from "../../Explorer";
 import { useNotebook } from "../../Notebook/useNotebook";
-import { OpenFullScreen } from "../../OpenFullScreen";
 import { BrowseQueriesPane } from "../../Panes/BrowseQueriesPane/BrowseQueriesPane";
 import { LoadQueryPane } from "../../Panes/LoadQueryPane/LoadQueryPane";
 import { SettingsPane, useDataPlaneRbac } from "../../Panes/SettingsPane/SettingsPane";
 import { useDatabases } from "../../useDatabases";
 import { SelectedNodeState, useSelectedNode } from "../../useSelectedNode";
+import { ThemeToggleButton } from "./ThemeToggleButton";
 
 let counter = 0;
 
@@ -68,15 +68,7 @@ export function createStaticCommandBarButtons(
   }
 
   if (isDataplaneRbacSupported(userContext.apiType)) {
-    const [loginButtonProps, setLoginButtonProps] = useState<CommandButtonComponentProps | undefined>(undefined);
-    const dataPlaneRbacEnabled = useDataPlaneRbac((state) => state.dataPlaneRbacEnabled);
-    const aadTokenUpdated = useDataPlaneRbac((state) => state.aadTokenUpdated);
-
-    useEffect(() => {
-      const buttonProps = createLoginForEntraIDButton(container);
-      setLoginButtonProps(buttonProps);
-    }, [dataPlaneRbacEnabled, aadTokenUpdated, container]);
-
+    const loginButtonProps = createLoginForEntraIDButton(container);
     if (loginButtonProps) {
       addDivider();
       buttons.push(loginButtonProps);
@@ -175,6 +167,7 @@ export function createContextCommandBarButtons(
 
 export function createControlCommandBarButtons(container: Explorer): CommandButtonComponentProps[] {
   const buttons: CommandButtonComponentProps[] = [
+    ThemeToggleButton(),
     {
       iconSrc: SettingsIcon,
       iconAlt: "Settings",
@@ -370,6 +363,22 @@ export function createScriptCommandButtons(selectedNodeState: SelectedNodeState)
       disabled:
         useSelectedNode.getState().isQueryCopilotCollectionSelected() ||
         selectedNodeState.isDatabaseNodeOrNoneSelected(),
+      styles: {
+        root: {
+          backgroundColor: "var(--colorNeutralBackground1)",
+          color: "var(--colorNeutralForeground1)",
+          selectors: {
+            ":hover": {
+              backgroundColor: "var(--colorNeutralBackground1Hover)",
+              color: "var(--colorNeutralForeground1Hover)",
+            },
+            ":active": {
+              backgroundColor: "var(--colorNeutralBackground1Pressed)",
+              color: "var(--colorNeutralForeground1Pressed)",
+            },
+          },
+        },
+      },
     };
     buttons.push(newStoredProcedureBtn);
   }
@@ -390,6 +399,22 @@ export function createScriptCommandButtons(selectedNodeState: SelectedNodeState)
       disabled:
         useSelectedNode.getState().isQueryCopilotCollectionSelected() ||
         selectedNodeState.isDatabaseNodeOrNoneSelected(),
+      styles: {
+        root: {
+          backgroundColor: "var(--colorNeutralBackground1)",
+          color: "var(--colorNeutralForeground1)",
+          selectors: {
+            ":hover": {
+              backgroundColor: "var(--colorNeutralBackground1Hover)",
+              color: "var(--colorNeutralForeground1Hover)",
+            },
+            ":active": {
+              backgroundColor: "var(--colorNeutralBackground1Pressed)",
+              color: "var(--colorNeutralForeground1Pressed)",
+            },
+          },
+        },
+      },
     };
     buttons.push(newUserDefinedFunctionBtn);
   }
@@ -410,6 +435,22 @@ export function createScriptCommandButtons(selectedNodeState: SelectedNodeState)
       disabled:
         useSelectedNode.getState().isQueryCopilotCollectionSelected() ||
         selectedNodeState.isDatabaseNodeOrNoneSelected(),
+      styles: {
+        root: {
+          backgroundColor: "var(--colorNeutralBackground1)",
+          color: "var(--colorNeutralForeground1)",
+          selectors: {
+            ":hover": {
+              backgroundColor: "var(--colorNeutralBackground1Hover)",
+              color: "var(--colorNeutralForeground1Hover)",
+            },
+            ":active": {
+              backgroundColor: "var(--colorNeutralBackground1Pressed)",
+              color: "var(--colorNeutralForeground1Pressed)",
+            },
+          },
+        },
+      },
     };
     buttons.push(newTriggerBtn);
   }
@@ -459,7 +500,7 @@ function createOpenTerminalButtonByKind(
       case ViewModels.TerminalKind.Postgres:
         return "PSQL";
       case ViewModels.TerminalKind.VCoreMongo:
-        return "MongoDB (vCore)";
+        return "MongoDB (DocumentDB)";
       default:
         return "";
     }

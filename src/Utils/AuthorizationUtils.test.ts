@@ -8,6 +8,7 @@ describe("AuthorizationUtils", () => {
   const setAadDataPlane = (enabled: boolean) => {
     updateUserContext({
       features: {
+        enableContainerCopy: false,
         enableAadDataPlane: enabled,
         canExceedMaximumValue: false,
         cosmosdb: false,
@@ -26,7 +27,7 @@ describe("AuthorizationUtils", () => {
         enableKoResourceTree: false,
         enableThroughputBuckets: false,
         hostedDataExplorer: false,
-        sandboxNotebookOutputs: false,
+        sandboxNotebookOutputs: true,
         showMinRUSurvey: false,
         ttl90Days: false,
         enableThroughputCap: false,
@@ -42,6 +43,7 @@ describe("AuthorizationUtils", () => {
         partitionKeyDefault: false,
         partitionKeyDefault2: false,
         notebooksDownBanner: false,
+        enableRestoreContainer: false,
       },
     });
   };
@@ -104,7 +106,7 @@ describe("AuthorizationUtils", () => {
 
     it("should return true if dataPlaneRbacEnabled is set to true and API supports RBAC", () => {
       setAadDataPlane(false);
-      ["SQL", "Tables", "Gremlin"].forEach((type) => {
+      ["SQL", "Tables", "Gremlin", "Mongo", "Cassandra"].forEach((type) => {
         updateUserContext({
           dataPlaneRbacEnabled: true,
           apiType: type as ApiType,
@@ -115,7 +117,7 @@ describe("AuthorizationUtils", () => {
 
     it("should return false if dataPlaneRbacEnabled is set to true and API does not support RBAC", () => {
       setAadDataPlane(false);
-      ["Mongo", "Cassandra", "Postgres", "VCoreMongo"].forEach((type) => {
+      ["Postgres", "VCoreMongo"].forEach((type) => {
         updateUserContext({
           dataPlaneRbacEnabled: true,
           apiType: type as ApiType,

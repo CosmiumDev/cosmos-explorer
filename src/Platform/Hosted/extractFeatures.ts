@@ -25,7 +25,6 @@ export type Features = {
   readonly notebookServerUrl?: string;
   readonly sandboxNotebookOutputs: boolean;
   readonly selfServeType?: string;
-  readonly pr?: string;
   readonly showMinRUSurvey: boolean;
   readonly ttl90Days: boolean;
   readonly mongoProxyEndpoint?: string;
@@ -39,7 +38,9 @@ export type Features = {
   readonly copilotChatFixedMonacoEditorHeight: boolean;
   readonly enablePriorityBasedExecution: boolean;
   readonly disableConnectionStringLogin: boolean;
+  readonly enableContainerCopy: boolean;
   readonly enableCloudShell: boolean;
+  readonly enableRestoreContainer: boolean; // only for Fabric
 
   // can be set via both flight and feature flag
   autoscaleDefault: boolean;
@@ -93,9 +94,8 @@ export function extractFeatures(given = new URLSearchParams(window.location.sear
     notebookBasePath: get("notebookbasepath"),
     notebookServerToken: get("notebookservertoken"),
     notebookServerUrl: get("notebookserverurl"),
-    sandboxNotebookOutputs: "true" === get("sandboxnotebookoutputs", "true"),
+    sandboxNotebookOutputs: true,
     selfServeType: get("selfservetype"),
-    pr: get("pr"),
     showMinRUSurvey: "true" === get("showminrusurvey"),
     ttl90Days: "true" === get("ttl90days"),
     autoscaleDefault: "true" === get("autoscaledefault"),
@@ -111,6 +111,8 @@ export function extractFeatures(given = new URLSearchParams(window.location.sear
     copilotChatFixedMonacoEditorHeight: "true" === get("copilotchatfixedmonacoeditorheight"),
     enablePriorityBasedExecution: "true" === get("enableprioritybasedexecution"),
     disableConnectionStringLogin: "true" === get("disableconnectionstringlogin"),
+    enableContainerCopy: "true" === get("enablecontainercopy"),
+    enableRestoreContainer: "true" === get("enablerestorecontainer"),
     enableCloudShell: true,
   };
 }

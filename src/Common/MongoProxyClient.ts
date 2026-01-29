@@ -7,6 +7,7 @@ import { MessageTypes } from "../Contracts/ExplorerContracts";
 import { Collection } from "../Contracts/ViewModels";
 import DocumentId from "../Explorer/Tree/DocumentId";
 import { userContext } from "../UserContext";
+import { isDataplaneRbacEnabledForProxyApi } from "../Utils/AuthorizationUtils";
 import { logConsoleError } from "../Utils/NotificationConsoleUtils";
 import { ApiType, ContentType, HttpHeaders, HttpStatusCodes } from "./Constants";
 import { MinimalQueryIterator } from "./IteratorUtilities";
@@ -16,13 +17,20 @@ const defaultHeaders = {
   [HttpHeaders.apiType]: ApiType.MongoDB.toString(),
   [CosmosSDKConstants.HttpHeaders.MaxEntityCount]: "100",
   [CosmosSDKConstants.HttpHeaders.Version]: "2017-11-15",
+  [HttpHeaders.sessionId]: userContext.sessionId,
 };
 
 function authHeaders() {
   if (userContext.authType === AuthType.EncryptedToken) {
     return { [HttpHeaders.guestAccessToken]: userContext.accessToken };
   } else {
-    return { [HttpHeaders.authorization]: userContext.authorizationToken };
+    const headers: { [key: string]: string } = {
+      [HttpHeaders.authorization]: userContext.authorizationToken,
+    };
+    if (isDataplaneRbacEnabledForProxyApi(userContext)) {
+      headers[HttpHeaders.entraIdToken] = userContext.aadToken;
+    }
+    return headers;
   }
 }
 

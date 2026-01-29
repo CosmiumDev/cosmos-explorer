@@ -19,6 +19,15 @@ import { act } from "react-dom/test-utils";
 import * as ViewModels from "../../../Contracts/ViewModels";
 import Explorer from "../../Explorer";
 
+jest.mock("rx-jupyter", () => ({
+  sessions: {
+    create: jest.fn(),
+  },
+  contents: {
+    JupyterContentProvider: jest.fn().mockImplementation(() => ({})),
+  },
+}));
+
 jest.requireActual("Explorer/Controls/Editor/EditorReact");
 
 const PROPERTY_VALUE = "__SOME_PROPERTY_VALUE__";
@@ -146,10 +155,16 @@ describe("Documents tab (Mongo API)", () => {
       updateConfigContext({ platform: Platform.Hosted });
 
       const props: IDocumentsTabComponentProps = createMockProps();
-
       wrapper = mount(<DocumentsTabComponent {...props} />);
-      wrapper = await waitForComponentToPaint(wrapper);
-    });
+
+      // Wait for all pending promises
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
+      // Wait for any async operations to complete
+      wrapper = await waitForComponentToPaint(wrapper, 100);
+    }, 10000);
 
     afterEach(() => {
       wrapper.unmount();
